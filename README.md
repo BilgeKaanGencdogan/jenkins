@@ -1,6 +1,5 @@
 # JENKINS
 - [INSTALLING JENKINS ON ROCKY 9](#install-jenkins-on-rocky-9)
-- [CONFIGURING SSL FOR JENKINS](#configuring-ssl-for-jenkins)
 - [ERROR IN ROCKY 9 LINUX REPOS](#error-in-rocky-9-linux-repos)
 - [SETTING STATIC IP](#setting-static-ip)
 - [ENABLING SSL FOR JENKINS AND CONFIGURING HTTPS](#enabling-ssl-for-jenkins-and-configuring-https)
@@ -10,11 +9,6 @@ I followed this video to install jenkins on rocky 9;
 https://www.youtube.com/watch?v=2-L0WohfsqY
 ```
 
-#### CONFIGURING SSL FOR JENKINS
-We will follow that guide;
-```
-https://medium.com/@touseef.idc/jenkins-installation-and-ssl-certificate-configuration-on-amazon-linux-2023-7394216e5238
-```
 #### ERROR IN ROCKY 9 LINUX REPOS
 When we do `dnf update`, Error is thrown;
 ```
