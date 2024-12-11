@@ -1,7 +1,7 @@
 # JENKINS
 - [INSTALLING JENKINS ON ROCKY 9](#install-jenkins-on-rocky-9)
 - [ERROR IN ROCKY 9 LINUX REPOS](#error-in-rocky-9-linux-repos)
-- [SETTING STATIC IP](#setting-static-ip)
+- [NETWORK CONFIGURATION](#network-configuration)
 - [ENABLING SSL FOR JENKINS AND CONFIGURING HTTPS](#enabling-ssl-for-jenkins-and-configuring-https)
 #### INSTALLING JENKINS ON ROCKY 9
 I followed this video to install jenkins on rocky 9;
@@ -38,8 +38,9 @@ countme=1
 metadata_expire=6h
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 ```
-#### SETTING STATIC IP
-I set static IP for my vm, in order to connect same ip to connect my jenkins through my host browser. 
+#### NETWORK CONFIGURATION
+Set up 2 network adapter;  `HOST-ONLY ADAPTER` is for internal communication like my host pc and vm, `NAT` is for external communication internet and vm. 
+
 #### ENABLING SSL FOR JENKINS AND CONFIGURING HTTPS
 1. __Install Nginx__
 
