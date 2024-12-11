@@ -69,7 +69,7 @@ upstream jenkins {
 
 server {
     listen 80;
-    server_name 139.179.203.136;  # Use your server's IP or domain name
+    server_name 192.168.56.101;  
 
     location / {
         proxy_pass http://jenkins;
@@ -84,7 +84,7 @@ Test and restart Nginx:
 sudo nginx -t
 sudo systemctl restart nginx
 ```
-Now Jenkins should be accessible at http://139.179.203.136.
+Now Jenkins should be accessible at http://192.168.56.101.
 3. __Handling Self-Signed SSL Certificates__
 If you're testing locally and don't have a domain name, you can generate a self-signed SSL certificate. Here's how:
 
@@ -99,7 +99,7 @@ Configure Nginx with Self-Signed Certificate:
 ```
 server {
     listen 443 ssl;
-    server_name 139.179.203.136;
+    server_name 192.168.56.101;
 
     ssl_certificate /etc/ssl/certs/jenkins.crt;
     ssl_certificate_key /etc/ssl/private/jenkins.key;
@@ -118,7 +118,7 @@ server {
 sudo nginx -t
 sudo systemctl restart nginx
 ```
-After completing the above steps, we should be able to access Jenkins securely over HTTPS using self-signed certificate. Open browser and go to `https://139.179.203.136`. We see a security warning , but we can bypass it for testing purposes.
+After completing the above steps, we should be able to access Jenkins securely over HTTPS using self-signed certificate. Open browser and go to `https://192.168.56.101`. We see a security warning , but we can bypass it for testing purposes.
 
 
 
