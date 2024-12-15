@@ -3,6 +3,8 @@
 - [ERROR IN ROCKY 9 LINUX REPOS](#error-in-rocky-9-linux-repos)
 - [NETWORK CONFIGURATION](#network-configuration)
 - [ENABLING SSL FOR JENKINS AND CONFIGURING HTTPS](#enabling-ssl-for-jenkins-and-configuring-https)
+- [CREATING DECLARTIVE PIPELINE WITH GIT REPO](#creating-declartive-pipeline-with-git-repo)
+- [ANSWERS FOR ADDITIONAL QUESTIONS](#answers-for-additional-questions)
 #### INSTALLING JENKINS ON ROCKY 9
 I followed this video to install jenkins on rocky 9;
 ```
@@ -114,6 +116,235 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 After completing the above steps, we should be able to access Jenkins securely over HTTPS using self-signed certificate. Open browser and go to `https://192.168.56.101`. We see a security warning , but we can bypass it for testing purposes.
+
+#### CREATING DECLARTIVE PIPELINE
+1. We need add new item then change the definition of the pipeline as `pipeline script from SCM`, and then give the url of the project `(https://github.com/BilgeKaanGencdogan/learn-jenkins-app)` and write script path for jenkins `Jenkinsfile` then click save the pipeline
+2. We should create new file with same name as the script path for jenkins in previous step.
+3. And finally write the pipeline;
+```Jenkins
+pipeline {
+    agent any
+
+    environment {
+        NETLIFY_SITE_ID = 'f64217ac-7042-4c89-a7c2-727934a56cab'
+        NETLIFY_AUTH_TOKEN = credentials('token-netlify')
+    }
+
+    stages {
+        stage('Install Retire.js') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    args '--user root'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    # Install retire.js globally
+                    npm install -g retire
+                    retire
+                '''
+            }
+        }
+
+        // stage('Install Bearer CLI') {
+        //     agent {
+        //         docker {
+        //             image 'node:18-alpine'
+        //             args '--user root'
+        //             reuseNode true
+        //         }
+        //     }
+        //     steps {
+        //         sh '''
+        //              apk add --no-cache curl git
+        //             curl -sfL https://raw.githubusercontent.com/Bearer/bearer/main/contrib/install.sh | sh
+        //             ls -la ./bin
+        //             ./bin/bearer scan .
+        //         '''
+        //     }
+        // }
+
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    args '--user root'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    whoami
+                    ls -la
+                    node --version
+                    npm --version
+                    npm ci --unsafe-perm
+                    npm run build
+                    ls -la
+                '''
+            }
+        }
+
+        stage('OWASP Dependency-Check Vulnerabilities') {
+            steps {
+                dependencyCheck additionalArguments: ''' 
+                    -o './'
+                    -s './'
+                    -f 'ALL' 
+                    --prettyPrint''', odcInstallation: 'OWASP Dependency-Check Vulnerabilities'
+                
+                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+            }
+        }
+
+        stage('Tests') {
+            parallel {
+                stage('Unit tests') {
+                    agent {
+                        docker {
+                            image 'node:18-alpine'
+                            args '--user root'
+                            reuseNode true
+                        }
+                    }
+
+                    steps {
+                        sh '''
+                            npm run test:ci
+                        '''
+                    }
+
+                    post {
+                        always {
+                            junit 'test-results/junit.xml'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    args '--user root'
+                    reuseNode true
+                }
+            }
+            steps {
+                    // sh '''
+                    //  # Install netlify-cli locally in the project
+                    // npm install netlify-cli --unsafe-perm
+
+                    // # Verify installation
+                    // node_modules/.bin/netlify --version
+
+                    // # Deploy using netlify-cli
+                    // echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
+                    // netlify login
+                    // node_modules/.bin/netlify status
+                    // node_modules/.bin/netlify deploy --dir=build --prod
+                    // '''
+
+                sh '''
+                    echo "Deploying...."
+                    '''
+            }
+        }
+    }
+
+    // post {
+    //     always {
+    //         script {
+    //             // Ensure the directory exists and has proper permissions
+    //             sh '''
+    //                 if [ -d "playwright-report" ]; then
+    //                     echo "Playwright report directory exists."
+    //                 else
+    //                     echo "Playwright report directory does not exist. Creating it."
+    //                     mkdir -p playwright-report
+    //                 fi
+
+    //                 chmod -R 777 /var/lib/jenkins/workspace/learn-jenkins-app/playwright-report
+                    
+    //             '''
+    //         }
+
+    //         // Publish Playwright report
+    //         publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+    //     }
+    // }
+
+     post 
+     {
+     always {
+        script {
+            if (currentBuild.result == 'FAILURE') {
+                // Logic to create a GitHub issue
+                sh """
+                curl -X POST -H "Authorization: token ${env.GITHUB_TOKEN}" \
+                     -H "Accept: application/vnd.github+json" \
+                     https://api.github.com/repos/BilgeKaanGencdogan/learn-jenkins-app/issues \
+                     -d '{
+                            "title": "Build failed",
+                            "body": "The build failed with the following error: ${currentBuild.result}",
+                            "labels": ["build-failure"]
+                         }'
+                """
+            }
+        }
+    }
+}
+
+}
+
+```
+There are some lines commented because whatever I do, I could not resolve the issues when they are added, most of the errors are related to permission issues Even though I've configured permissions, but they are thrown anyway. I am going to provide one of them below to give an idea;
+1. even though my current user is root, this error kept thrown. I was trying to deploy the application to the netlify.
+ ```
++ npm install '--unsafe-perm=true' netlify-cli
+npm error code EACCES
+npm error syscall mkdir
+npm error path /var/lib/jenkins/workspace/learn-jenkins-app/node_modules/playwright/node_modules/fsevents
+npm error errno -13
+npm error [Error: EACCES: permission denied, mkdir '/var/lib/jenkins/workspace/learn-jenkins-app/node_modules/playwright/node_modules/fsevents'] {
+npm error   errno: -13,
+npm error   code: 'EACCES',
+npm error   syscall: 'mkdir',
+npm error   path: '/var/lib/jenkins/workspace/learn-jenkins-app/node_modules/playwright/node_modules/fsevents'
+npm error }
+npm error
+npm error The operation was rejected by your operating system.
+npm error It is likely you do not have the permissions to access this file as the current user
+npm error
+npm error If you believe this might be a permissions issue, please double-check the
+npm error permissions of the file and its containing directories, or try running
+npm error the command again as root/Administrator.
+npm error A complete log of this run can be found in: /var/lib/jenkins/workspace/learn-jenkins-app/${npm_config_cache}/_logs/2024-12-14T17_06_49_438Z-debug-0.log
+script returned exit code 243
+```
+In IDE, Every command is working fine, I have done it in the IDE before writing but somehow they did not work in the pipeline. 
+#### ANSWERS FOR ADDITIONAL QUESTIONS
+1. __Could there be alternative methods to create this Jenkins pipeline other than the one you used?__
+   I've used declaretive pipeline, and it feels easy for me regardles of the errors I've gotten.
+   There is one more which is scripted pipeline which is the original pipeline syntax for Jenkins, it uses Groovy scripting language to define pipelines. It provides a lot of flexibility and control over the workflow, but can be more complex and verbose.
+
+2.  __If the code you had to compile required the use of another OS (e.g., macOS, Windows), how would you compile that code?__
+   I would use docker. Most probably there are `Docker images` mimicking the required environment (e.g., Windows Containers for Windows code, Linux Containers for Linux code).
+
+3. __Is it possible to run the Jenkins pipeline automatically every time the source code is modified? How?__
+   There is webhook which does that. Configuration pf  source control system (e.g., GitHub, GitLab, Bitbucket) to send a webhook to your Jenkins server whenever changes are pushed to the repository.
+
+4. __How would you set up a highly available Jenkins installation?__
+-Master-Slave Architecture: Use a Jenkins master for managing jobs and multiple agent nodes for builds.
+-Active-Passive Setup: Deploy two Jenkins masters (active and standby) with a load balancer to switch traffic if the active master fails.
+-Shared Storage: Use NFS or cloud storage for job configurations and artifacts.
+-External Database: Store Jenkins metadata in an external database like MySQL for easy recovery.
+-Kubernetes: Deploy Jenkins in Kubernetes for auto-scaling and fault tolerance.
+-Backups: Regularly back up Jenkins configurations and data for disaster recovery.
+
 
 
 
